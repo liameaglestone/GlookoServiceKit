@@ -1,5 +1,5 @@
 import Foundation
-import HealthKit
+import LoopKit
 
 public enum GlucoseUnitPreference: String, Codable {
     case mgdl
@@ -9,7 +9,7 @@ public enum GlucoseUnitPreference: String, Codable {
         switch self {
         case .mgdl: return mgdl.rounded()
         case .mmol:
-            let mmol = HKQuantity(unit: .gkMilligramsPerDeciliter, doubleValue: mgdl).doubleValue(for: .gkMillimolesPerLiter)
+            let mmol = LoopQuantity(unit: .gkMilligramsPerDeciliter, doubleValue: mgdl).doubleValue(for: .gkMillimolesPerLiter)
             return (mmol * 10).rounded() / 10
         }
     }

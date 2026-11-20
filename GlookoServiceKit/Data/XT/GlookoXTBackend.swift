@@ -1,6 +1,5 @@
 import Foundation
 import LoopKit
-import HealthKit
 
 public final class GlookoXTBackend: GlookoBackend {
     public let variant: GlookoVariant = .xt
@@ -42,7 +41,7 @@ public final class GlookoXTBackend: GlookoBackend {
                             deleted: [SyncCarbObject]) async throws {
         let records = (created + updated).map {
             GlookoRecordBuilder.carbs($0.startDate,
-                                      grams: $0.quantity.doubleValue(for: .gram()),
+                                      grams: $0.quantity.doubleValue(for: .gram),
                                       mealTag: nil)
         }
         try await send(records)

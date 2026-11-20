@@ -116,20 +116,20 @@ final class GlookoServiceTests: XCTestCase {
 
     func testUnmappedUploadsSucceedImmediately() async {
         let (service, _) = makeService()
-        await assertSuccess { service.uploadAlertData([], completion: $0) }
-        await assertSuccess { service.uploadTemporaryOverrideData(updated: [], deleted: [], completion: $0) }
-        await assertSuccess { service.uploadDosingDecisionData([], completion: $0) }
-        await assertSuccess { service.uploadSettingsData([], completion: $0) }
-        await assertSuccess { service.uploadCgmEventData([], completion: $0) }
+        await assertSuccess { try await service.uploadAlertData([]) }
+        await assertSuccess { try await service.uploadTemporaryOverrideData(updated: [], deleted: []) }
+        await assertSuccess { try await service.uploadDosingDecisionData([]) }
+        await assertSuccess { try await service.uploadSettingsData([]) }
+        await assertSuccess { try await service.uploadCgmEventData([]) }
         try? await service.remoteNotificationWasReceived([:])
     }
 
     func testMappedUploadsFailWhenNotConfigured() async {
         let (service, _) = makeService()
-        await assertFailure { service.uploadGlucoseData([], completion: $0) }
-        await assertFailure { service.uploadDoseData(created: [], deleted: [], completion: $0) }
-        await assertFailure { service.uploadCarbData(created: [], updated: [], deleted: [], completion: $0) }
-        await assertFailure { service.uploadPumpEventData([], completion: $0) }
+        await assertFailure { try await service.uploadGlucoseData([]) }
+        await assertFailure { try await service.uploadDoseData(created: [], deleted: []) }
+        await assertFailure { try await service.uploadCarbData(created: [], updated: [], deleted: []) }
+        await assertFailure { try await service.uploadPumpEventData([]) }
     }
 
     func testRawStateKeepsHostIdentity() throws {
@@ -153,25 +153,19 @@ final class GlookoServiceTests: XCTestCase {
         service.backendOverride = backend
         service.reload()
         let now = Date()
-        let bolus = DoseEntry(type: .bolus, startDate: now, endDate: now, value: 1, unit: .units)
-        await assertSuccess { service.uploadPumpSnapshot(basal: [], boluses: [bolus, bolus], carbs: [], completion: $0) }
-        await assertSuccess { service.uploadPumpSnapshot(basal: [], boluses: [bolus], carbs: [], completion: $0) }
+        let bolus = DoseEntry(type: .bolus, startDate: now, endDate: now, value: 1, unit: .units, decisionId: nil)
+        await assertSuccess { try await service.uploadPumpSnapshot(basal: [], boluses: [bolus, bolus], carbs: []) }
+        await assertSuccess { try await service.uploadPumpSnapshot(basal: [], boluses: [bolus], carbs: []) }
         XCTAssertEqual(backend.snapshots, 2)
         XCTAssertEqual(service.stats.doses, 3)
         XCTAssertNotNil(service.stats.lastUploadDate)
     }
 
-    private func assertSuccess(_ call: (@escaping (Result<Bool, Error>) -> Void) -> Void) async {
-        let result = await withCheckedContinuation { (c: CheckedContinuation<Result<Bool, Error>, Never>) in
-            call { c.resume(returning: $0) }
-        }
-        if case .failure = result { XCTFail("expected success") }
+    private func assertSuccess(_ call: () async throws -> Void) async {
+        do { try await call() } catch { XCTFail("expected success, got \(error)") }
     }
 
-    private func assertFailure(_ call: (@escaping (Result<Bool, Error>) -> Void) -> Void) async {
-        let result = await withCheckedContinuation { (c: CheckedContinuation<Result<Bool, Error>, Never>) in
-            call { c.resume(returning: $0) }
-        }
-        if case .success = result { XCTFail("expected failure") }
+    private func assertFailure(_ call: () async throws -> Void) async {
+        do { try await call(); XCTFail("expected failure") } catch {}
     }
 }

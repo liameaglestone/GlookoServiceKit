@@ -1,11 +1,9 @@
 import XCTest
-import HealthKit
 import LoopKit
 @testable import GlookoServiceKit
 
 final class GlookoClassicBackendTests: XCTestCase {
 
-    private let mgdl = HKUnit(from: "mg/dL")
 
     private func makeBackend(_ mock: MockHTTPTransport) -> GlookoClassicBackend {
         var config = GlookoService.Configuration()
@@ -15,7 +13,7 @@ final class GlookoClassicBackendTests: XCTestCase {
     }
 
     private func glucose(_ value: Double, userEntered: Bool, _ date: Date, id: String? = nil) -> StoredGlucoseSample {
-        StoredGlucoseSample(syncIdentifier: id, startDate: date, quantity: HKQuantity(unit: mgdl, doubleValue: value),
+        StoredGlucoseSample(syncIdentifier: id, startDate: date, quantity: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: value),
                             wasUserEntered: userEntered)
     }
 
@@ -77,7 +75,7 @@ final class GlookoClassicBackendTests: XCTestCase {
     }
 
     private func bolus(_ units: Double, _ date: Date, id: String?, mutable: Bool = false) -> DoseEntry {
-        DoseEntry(type: .bolus, startDate: date, endDate: date, value: units, unit: .units, syncIdentifier: id, isMutable: mutable)
+        DoseEntry(type: .bolus, startDate: date, endDate: date, value: units, unit: .units, decisionId: nil, syncIdentifier: id, isMutable: mutable)
     }
 
     private func utcHour(_ hour: Int) -> Date { Date(timeIntervalSince1970: 1_800_000_000 + Double(hour) * 3600) }
@@ -88,8 +86,8 @@ final class GlookoClassicBackendTests: XCTestCase {
         let now = Date()
         let doses: [DoseEntry] = [
             bolus(2.5, now, id: "b1"),
-            DoseEntry(type: .tempBasal, startDate: now, endDate: now.addingTimeInterval(1800), value: 1.5, unit: .unitsPerHour),
-            DoseEntry(type: .basal, startDate: now, endDate: now.addingTimeInterval(3600), value: 0.8, unit: .unitsPerHour),
+            DoseEntry(type: .tempBasal, startDate: now, endDate: now.addingTimeInterval(1800), value: 1.5, unit: .unitsPerHour, decisionId: nil),
+            DoseEntry(type: .basal, startDate: now, endDate: now.addingTimeInterval(3600), value: 0.8, unit: .unitsPerHour, decisionId: nil),
         ]
         try await backend.uploadDoses(created: doses, deleted: [])
 
@@ -151,8 +149,8 @@ final class GlookoClassicBackendTests: XCTestCase {
         let mock = MockHTTPTransport { req, _ in try MockResponder.status(req, 204) }
         let backend = makeBackend(mock)
         let basal: [DoseEntry] = [
-            DoseEntry(type: .tempBasal, startDate: utcHour(0), endDate: utcHour(0).addingTimeInterval(1800), value: 2, unit: .unitsPerHour),
-            DoseEntry(type: .basal, startDate: utcHour(0).addingTimeInterval(1800), endDate: utcHour(2), value: 1, unit: .unitsPerHour),
+            DoseEntry(type: .tempBasal, startDate: utcHour(0), endDate: utcHour(0).addingTimeInterval(1800), value: 2, unit: .unitsPerHour, decisionId: nil),
+            DoseEntry(type: .basal, startDate: utcHour(0).addingTimeInterval(1800), endDate: utcHour(2), value: 1, unit: .unitsPerHour, decisionId: nil),
         ]
         try await backend.uploadPumpSnapshot(basal: basal, boluses: [bolus(2.5, utcHour(0), id: "b1")], carbs: [],
                                              now: utcHour(3))
@@ -169,7 +167,7 @@ final class GlookoClassicBackendTests: XCTestCase {
     func testSnapshotSoftDeletesSuspendedHour() async throws {
         let mock = MockHTTPTransport { req, _ in try MockResponder.status(req, 204) }
         let backend = makeBackend(mock)
-        let basal = [DoseEntry(type: .suspend, startDate: utcHour(0), endDate: utcHour(1), value: 0, unit: .units)]
+        let basal = [DoseEntry(type: .suspend, startDate: utcHour(0), endDate: utcHour(1), value: 0, unit: .units, decisionId: nil)]
         try await backend.uploadPumpSnapshot(basal: basal, boluses: [], carbs: [], now: utcHour(2))
         let sent = try insulins(mock)
         XCTAssertEqual(sent.count, 1)

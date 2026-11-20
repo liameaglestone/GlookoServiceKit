@@ -42,8 +42,11 @@ final class GlookoAlertTests: XCTestCase {
     }
 
     private func upload(_ service: GlookoService) async -> Result<Bool, Error> {
-        await withCheckedContinuation { continuation in
-            service.uploadGlucoseData([]) { continuation.resume(returning: $0) }
+        do {
+            try await service.uploadGlucoseData([])
+            return .success(true)
+        } catch {
+            return .failure(error)
         }
     }
 
@@ -91,7 +94,7 @@ final class GlookoAlertTests: XCTestCase {
         _ = await upload(service)
 
         XCTAssertEqual(recorder.issued.map(\.identifier.alertIdentifier), ["authentication-needed"])
-        XCTAssertEqual(recorder.issued.first?.identifier.managerIdentifier, GlookoService.pluginIdentifier)
+        XCTAssertEqual(recorder.issued.first?.identifier.managerIdentifier, GlookoService.serviceIdentifier)
         XCTAssertEqual(recorder.issued.first?.trigger, .immediate)
     }
 

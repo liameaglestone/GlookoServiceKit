@@ -1,11 +1,9 @@
 import XCTest
-import HealthKit
 import LoopKit
 @testable import GlookoServiceKit
 
 final class XTRecordTests: XCTestCase {
 
-    private let iuhr = HKUnit(from: "IU/hr")
 
     private func encodeJSON(_ record: GlookoRecord) throws -> [String: Any] {
         let data = try JSONEncoder().encode(record)

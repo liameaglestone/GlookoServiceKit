@@ -1,6 +1,5 @@
 import Foundation
 import LoopKit
-import HealthKit
 
 enum GlookoLibreViewCSV {
 

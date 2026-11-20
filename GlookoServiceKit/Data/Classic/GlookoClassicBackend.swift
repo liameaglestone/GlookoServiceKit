@@ -1,6 +1,5 @@
 import Foundation
 import LoopKit
-import HealthKit
 
 public final class GlookoClassicBackend: GlookoBackend {
     public let variant: GlookoVariant = .classic
@@ -103,7 +102,7 @@ public final class GlookoClassicBackend: GlookoBackend {
     private func food(_ carb: SyncCarbObject, deleted: Bool, _ stamp: String) -> GKFood {
         let id = carb.syncIdentifier ?? carb.uuid?.uuidString ?? Self.seed(nil, carb.startDate)
         return GKFood(guid: GlookoGUID.food(id), timestamp: GlookoClassicAPI.iso(carb.startDate),
-                      carbs: carb.quantity.doubleValue(for: .gram()), softDeleted: deleted, syncTimestamp: stamp)
+                      carbs: carb.quantity.doubleValue(for: .gram), softDeleted: deleted, syncTimestamp: stamp)
     }
 
     private func completeSync() async {

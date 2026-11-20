@@ -9,7 +9,7 @@ final class GlookoHourlyBasalTests: XCTestCase {
     private func at(_ hours: Double) -> Date { base.addingTimeInterval(hours * 3600) }
 
     private func segment(_ type: DoseType, _ from: Double, _ to: Double, _ rate: Double) -> DoseEntry {
-        DoseEntry(type: type, startDate: at(from), endDate: at(to), value: rate, unit: .unitsPerHour)
+        DoseEntry(type: type, startDate: at(from), endDate: at(to), value: rate, unit: .unitsPerHour, decisionId: nil)
     }
 
     func testBaseIsHourAligned() {
@@ -60,14 +60,14 @@ final class GlookoHourlyBasalTests: XCTestCase {
 
     func testBolusesAndEmptyTimelineIgnored() {
         XCTAssertTrue(GlookoHourlyBasal.hours(from: [], now: at(5)).isEmpty)
-        let bolus = DoseEntry(type: .bolus, startDate: at(0), endDate: at(0), value: 3, unit: .units)
+        let bolus = DoseEntry(type: .bolus, startDate: at(0), endDate: at(0), value: 3, unit: .units, decisionId: nil)
         XCTAssertTrue(GlookoHourlyBasal.hours(from: [bolus], now: at(5)).isEmpty)
     }
 
     func testHoursAreUTCAlignedRegardlessOfTimeZone() {
         let offset = base.addingTimeInterval(1800)
         let timeline = [DoseEntry(type: .basal, startDate: offset, endDate: offset.addingTimeInterval(3 * 3600),
-                                  value: 1, unit: .unitsPerHour)]
+                                  value: 1, unit: .unitsPerHour, decisionId: nil)]
         let hours = GlookoHourlyBasal.hours(from: timeline, now: at(5))
         XCTAssertTrue(hours.allSatisfy { $0.start.timeIntervalSince1970.truncatingRemainder(dividingBy: 3600) == 0 })
         XCTAssertEqual(hours.map(\.start), [at(1), at(2)])

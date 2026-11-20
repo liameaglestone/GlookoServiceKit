@@ -1,14 +1,16 @@
 import Foundation
 import LoopKit
-import HealthKit
 
 public final class GlookoService: Service, ObservableObject {
 
-    public static let pluginIdentifier = "GlookoService"
+    public static let serviceIdentifier = "GlookoService"
     public static let localizedTitle = LocalizedString("Glooko", comment: "Title of the Glooko service")
+
+    public var pluginIdentifier: String { Self.serviceIdentifier }
 
     public weak var serviceDelegate: ServiceDelegate?
     public weak var stateDelegate: StatefulPluggableDelegate?
+    public weak var remoteDataServiceDelegate: RemoteDataServiceDelegate?
 
     public struct Configuration: Codable {
 
@@ -131,51 +133,42 @@ extension GlookoService: RemoteDataService {
     public var dosingDecisionDataLimit: Int? { 0 }
     public var settingsDataLimit: Int? { 0 }
 
-    public func uploadGlucoseData(_ stored: [StoredGlucoseSample],
-                                  completion: @escaping (Result<Bool, Error>) -> Void) {
-        run(completion, record: { $0.glucose += stored.count }) { try await $0.uploadGlucose(stored) }
+    public func uploadGlucoseData(_ stored: [StoredGlucoseSample]) async throws {
+        try await run(record: { $0.glucose += stored.count }) { try await $0.uploadGlucose(stored) }
     }
 
-    public func uploadDoseData(created: [DoseEntry], deleted: [DoseEntry],
-                               completion: @escaping (Result<Bool, Error>) -> Void) {
-        run(completion, record: { $0.doses += created.count }) { try await $0.uploadDoses(created: created, deleted: deleted) }
+    public func uploadDoseData(created: [DoseEntry], deleted: [DoseEntry]) async throws {
+        try await run(record: { $0.doses += created.count }) { try await $0.uploadDoses(created: created, deleted: deleted) }
     }
 
     public func uploadCarbData(created: [SyncCarbObject], updated: [SyncCarbObject],
-                               deleted: [SyncCarbObject],
-                               completion: @escaping (Result<Bool, Error>) -> Void) {
-        run(completion, record: { $0.carbs += created.count + updated.count }) {
+                               deleted: [SyncCarbObject]) async throws {
+        try await run(record: { $0.carbs += created.count + updated.count }) {
             try await $0.uploadCarbs(created: created, updated: updated, deleted: deleted)
         }
     }
 
-    public func uploadPumpEventData(_ stored: [PersistedPumpEvent],
-                                    completion: @escaping (Result<Bool, Error>) -> Void) {
-        run(completion, record: { $0.pumpEvents += stored.count }) { try await $0.uploadPumpEvents(stored) }
+    public func uploadPumpEventData(_ stored: [PersistedPumpEvent]) async throws {
+        try await run(record: { $0.pumpEvents += stored.count }) { try await $0.uploadPumpEvents(stored) }
     }
 
     public var alertDataLimit: Int? { 0 }
-    public func uploadAlertData(_ stored: [SyncAlertObject],
-                                completion: @escaping (Result<Bool, Error>) -> Void) { completion(.success(true)) }
+    public func uploadAlertData(_ stored: [SyncAlertObject]) async throws { }
 
-    public func uploadTemporaryOverrideData(updated: [TemporaryScheduleOverride], deleted: [TemporaryScheduleOverride],
-                                            completion: @escaping (Result<Bool, Error>) -> Void) { completion(.success(true)) }
+    public func uploadTemporaryOverrideData(updated: [TemporaryScheduleOverride],
+                                            deleted: [TemporaryScheduleOverride]) async throws { }
 
-    public func uploadDosingDecisionData(_ stored: [StoredDosingDecision],
-                                         completion: @escaping (Result<Bool, Error>) -> Void) { completion(.success(true)) }
+    public func uploadDosingDecisionData(_ stored: [StoredDosingDecision]) async throws { }
 
-    public func uploadSettingsData(_ stored: [StoredSettings],
-                                   completion: @escaping (Result<Bool, Error>) -> Void) { completion(.success(true)) }
+    public func uploadSettingsData(_ stored: [StoredSettings]) async throws { }
 
-    public func uploadCgmEventData(_ stored: [PersistedCgmEvent],
-                                   completion: @escaping (Result<Bool, Error>) -> Void) { completion(.success(true)) }
+    public func uploadCgmEventData(_ stored: [PersistedCgmEvent]) async throws { }
 
     public func remoteNotificationWasReceived(_ notification: [String: AnyObject]) async throws { }
 
     public func uploadPumpSnapshot(basal: [DoseEntry], boluses: [DoseEntry], carbs: [SyncCarbObject],
-                                   now: Date = Date(),
-                                   completion: @escaping (Result<Bool, Error>) -> Void) {
-        run(completion, record: { stats in
+                                   now: Date = Date()) async throws {
+        try await run(record: { stats in
             stats.doses += boluses.count
             stats.carbs += carbs.count
         }) {
@@ -183,31 +176,27 @@ extension GlookoService: RemoteDataService {
         }
     }
 
-    private func run(_ completion: @escaping (Result<Bool, Error>) -> Void,
-                     record: @escaping (inout UploadStats) -> Void = { _ in },
-                     _ work: @escaping (GlookoBackend) async throws -> Void) {
-        Task {
-            do {
-                try await coordinator.perform(work)
-                let cookie = (backend as? GlookoClassicBackend)?.sessionCookie
-                await MainActor.run {
-                    if let cookie, cookie != token { token = cookie }
-                    record(&stats)
-                    stats.lastUploadDate = Date()
-                    lastError = nil
-                    recordSuccess()
-                    persist()
-                }
-                completion(.success(true))
-            } catch {
-                let message = GlookoRedact.text(error.localizedDescription)
-                GlookoLog.upload.error("upload failed: \(message, privacy: .public)")
-                await MainActor.run {
-                    self.lastError = message
-                    self.recordFailure(error)
-                }
-                completion(.failure(error))
+    private func run(record: @escaping (inout UploadStats) -> Void = { _ in },
+                     _ work: @escaping (GlookoBackend) async throws -> Void) async throws {
+        do {
+            try await coordinator.perform(work)
+            let cookie = (backend as? GlookoClassicBackend)?.sessionCookie
+            await MainActor.run {
+                if let cookie, cookie != token { token = cookie }
+                record(&stats)
+                stats.lastUploadDate = Date()
+                lastError = nil
+                recordSuccess()
+                persist()
             }
+        } catch {
+            let message = GlookoRedact.text(error.localizedDescription)
+            GlookoLog.upload.error("upload failed: \(message, privacy: .public)")
+            await MainActor.run {
+                self.lastError = message
+                self.recordFailure(error)
+            }
+            throw error
         }
     }
 }

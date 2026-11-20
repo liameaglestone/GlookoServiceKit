@@ -1,12 +1,12 @@
-import HealthKit
+import LoopKit
 
-extension HKUnit {
+/// Glooko's unit names, mapped onto LoopKit's own units now that LoopKit samples carry
+/// `LoopQuantity` rather than HealthKit's `HKQuantity`. File name kept for the Xcode project.
+extension LoopUnit {
 
-    static var gkMilligramsPerDeciliter: HKUnit { HKUnit(from: "mg/dL") }
+    static var gkMilligramsPerDeciliter: LoopUnit { .milligramsPerDeciliter }
 
-    static var gkMillimolesPerLiter: HKUnit {
-        HKUnit.moleUnit(with: .milli, molarMass: HKUnitMolarMassBloodGlucose).unitDivided(by: .liter())
-    }
+    static var gkMillimolesPerLiter: LoopUnit { .millimolesPerLiter }
 
-    static var gkInternationalUnitsPerHour: HKUnit { HKUnit(from: "IU/hr") }
+    static var gkInternationalUnitsPerHour: LoopUnit { .internationalUnitsPerHour }
 }

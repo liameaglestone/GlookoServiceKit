@@ -120,8 +120,8 @@ final class GlookoXTClientTests: XCTestCase {
         let backend = GlookoXTBackend(configuration: GlookoService.Configuration(), token: jwt(id: 7),
                                       api: GlookoXTClient(token: jwt(id: 7), transport: mock))
         let now = Date()
-        try await backend.uploadDoses(created: [DoseEntry(type: .bolus, startDate: now, endDate: now, value: 2, unit: .units)],
-                                      deleted: [DoseEntry(type: .bolus, startDate: now, endDate: now, value: 1, unit: .units)])
+        try await backend.uploadDoses(created: [DoseEntry(type: .bolus, startDate: now, endDate: now, value: 2, unit: .units, decisionId: nil)],
+                                      deleted: [DoseEntry(type: .bolus, startDate: now, endDate: now, value: 1, unit: .units, decisionId: nil)])
         // An unconnected socket throws on any moments send, so returning proves nothing was emitted.
         XCTAssertTrue(mock.requests.isEmpty)
     }

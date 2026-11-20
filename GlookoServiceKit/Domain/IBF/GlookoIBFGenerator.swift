@@ -1,6 +1,5 @@
 import Foundation
 import LoopKit
-import HealthKit
 
 public struct GlookoIBFGenerator {
 
@@ -69,7 +68,7 @@ public struct GlookoIBFGenerator {
             result.append(Entry(date: dose.startDate, kind: .bolus(units: dose.deliveredUnits ?? dose.programmedUnits, durationMin: durationMin)))
         }
         for carb in carbs {
-            result.append(Entry(date: carb.startDate, kind: .carbs(grams: carb.quantity.doubleValue(for: .gram()))))
+            result.append(Entry(date: carb.startDate, kind: .carbs(grams: carb.quantity.doubleValue(for: .gram))))
         }
         for (value, date) in zip(manualGlucose, glucoseDates) {
             result.append(Entry(date: date, kind: .glucose(mgdl: value)))

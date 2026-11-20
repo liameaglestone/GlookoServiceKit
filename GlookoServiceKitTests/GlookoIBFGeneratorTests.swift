@@ -1,6 +1,5 @@
 import XCTest
 import LoopKit
-import HealthKit
 @testable import GlookoServiceKit
 
 final class GlookoIBFGeneratorTests: XCTestCase {
@@ -128,7 +127,7 @@ final class GlookoIBFGeneratorTests: XCTestCase {
 
     func testEntriesMappingFromDoseAndCarb() {
         let bolus = DoseEntry(type: .bolus, startDate: date(2026, 6, 20, 12, 0), endDate: date(2026, 6, 20, 12, 0),
-                              value: 4.0, unit: .units)
+                              value: 4.0, unit: .units, decisionId: nil)
         let carb = SyncCarbObject(absorptionTime: nil, createdByCurrentApp: true, foodType: nil, grams: 30,
                                   startDate: date(2026, 6, 20, 12, 0), uuid: nil, provenanceIdentifier: "Trio",
                                   syncIdentifier: nil, syncVersion: nil, userCreatedDate: nil, userUpdatedDate: nil,
