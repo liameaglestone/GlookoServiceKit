@@ -57,8 +57,10 @@ extension GlookoService {
         for kind in Self.alertsToIssue(for: error, stats: stats, now: now) where !activeAlerts.contains(kind) {
             activeAlerts.insert(kind)
             let content = Self.content(kind)
-            serviceDelegate?.issueAlert(Alert(identifier: alertIdentifier(kind), foregroundContent: content,
-                                              backgroundContent: content, trigger: .immediate, interruptionLevel: .active))
+            let alert = Alert(identifier: alertIdentifier(kind), foregroundContent: content,
+                              backgroundContent: content, trigger: .immediate, interruptionLevel: .active)
+            // LoopKit's AlertIssuer calls are async; fire and forget, as TidepoolService does.
+            Task { [weak delegate = serviceDelegate] in await delegate?.issueAlert(alert) }
         }
         persist()
     }
@@ -70,7 +72,8 @@ extension GlookoService {
 
     @MainActor func retractAlerts() {
         for kind in activeAlerts {
-            serviceDelegate?.retractAlert(identifier: alertIdentifier(kind))
+            let identifier = alertIdentifier(kind)
+            Task { [weak delegate = serviceDelegate] in await delegate?.retractAlert(identifier: identifier) }
         }
         activeAlerts.removeAll()
     }
